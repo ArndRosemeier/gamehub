@@ -1,75 +1,29 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GameHub — game-state relay</title>
-  <meta name="description" content="A small, in-memory relay for TypeScript multiplayer games: rooms, lobby, host-authoritative state sync." />
-  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
-  <main>
-    <header>
-      <h1>GameHub</h1>
-      <p class="lede">A small, in-memory relay for TypeScript multiplayer games. No per-game server code:
-        a game creates a room, one player hosts the simulation, everyone else syncs through it.</p>
-      <p class="meta">
-        <span class="pill" id="health">checking…</span>
-        <span class="pill" id="count">—</span>
-        <span class="pill quiet">nothing stored on disk</span>
-      </p>
-    </header>
-
-    <section>
-      <h2>Play</h2>
-      <p><a class="card" href="https://apps.futuremagic.de/lobby/">
-        <strong>The Lobby →</strong>
-        <span>Every multiplayer game running right now, grouped by game, with a join link for each room.</span>
-      </a></p>
-      <p><a class="card" href="https://apps.futuremagic.de/arena/">
-        <strong>Arena <span class="tag">sample</span></strong>
-        <span>Move with WASD / arrows, collect the coin. Open it in two tabs or on your phone and desktop.</span>
-      </a></p>
-    </section>
-
-    <section>
-      <h2>Registered games</h2>
-      <table id="apps"><thead><tr><th>app</th><th>name</th><th>who can play</th></tr></thead><tbody><tr><td colspan="3">loading…</td></tr></tbody></table>
-      <p class="hint"><code>key</code> games are open to anyone with the game. <code>cloudflare</code> games require a Cloudflare Access login.</p>
-    </section>
-
-    <section>
-      <h2>Connect a game</h2>
-      <pre><code>import { connect } from "https://games.futuremagic.de/sdk.js";
-
-const hub = connect({ app: "arena", appKey: "ghk_…", name: "you" });
-await hub.ready;
-
-hub.watchLobby((rooms) =&gt; render(rooms));
-await hub.create({ name: "Duel", maxPlayers: 4 });
-
-hub.on("state", (world) =&gt; { if (!hub.isHost) local = world; });
-hub.on("delta", (d)     =&gt; { if (!hub.isHost) apply(local, d); });
-if (hub.isHost) { hub.setState(local); hub.sendDelta(step(local)); }
-else hub.send({ type: "input", input: controls }, hub.host);</code></pre>
-    </section>
-
-    <section>
-      <h2>Docs</h2>
-      <ul class="links">
-        <li><a href="https://github.com/ArndRosemeier/gameserver#readme">Integration guide</a> — five steps from a game to a room</li>
-        <li><a href="https://github.com/ArndRosemeier/gameserver/blob/main/docs/PATTERNS.md">Patterns</a> — host authority, deltas, migration, smoothness</li>
-        <li><a href="https://github.com/ArndRosemeier/gameserver/blob/main/docs/PROTOCOL.md">Wire protocol</a> — for non-TypeScript clients</li>
-        <li><a href="./sdk.js">/sdk.js</a> — the JavaScript client served from here</li>
-      </ul>
-    </section>
-
-    <footer>
-      <span>GameHub · loopback service behind the Cloudflare tunnel</span>
-      <span><a href="./healthz">/healthz</a></span>
-    </footer>
-  </main>
-  <script type="module" src="./app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Futuremagic lobby: multiplayer games running right now." />
+    <title>Futuremagic Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="./assets/index-DjV2brjH.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DOvjkRis.css">
+  </head>
+  <body>
+    <div class="backdrop" aria-hidden="true"></div>
+    <main class="page">
+      <header class="masthead">
+        <a class="home" href="/">Futuremagic</a>
+        <h1>The Lobby</h1>
+        <p class="lead">Games running right now, and the rooms you can join.</p>
+        <p class="status" id="status" aria-live="polite">Looking for open tables…</p>
+      </header>
+      <section class="games" id="games"></section>
+    </main>
+  </body>
 </html>

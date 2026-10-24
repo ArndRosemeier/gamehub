@@ -371,6 +371,10 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (req.method !== "GET") return json(res, 405, { error: "method_not_allowed" });
   if (path === "/healthz") return json(res, 200, { ok: true });
+  if (path === "/apps.json" || path.startsWith("/shots/")) {
+    if (path.includes("..")) return json(res, 400, { error: "bad_path" });
+    return void (await serveUpstream(path, res));
+  }
   const asset = resolveWebFile(path);
   if (asset) {
     const type = MIME[asset.ext] ?? "application/octet-stream";
@@ -393,6 +397,38 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { rooms: listRooms(m[1]) });
   }
   return json(res, 404, { error: "not_found" });
+}
+
+/** The site registry and its screenshots live on the apps host; the lobby needs them same-origin. */
+const UPSTREAM = "https://apps.futuremagic.de";
+const proxyCache = new Map<string, { body: Buffer; type: string; at: number }>();
+const PROXY_TTL: Record<string, number> = { "/apps.json": 60_000 };
+const PROXY_MAX_ENTRIES = 60;
+
+async function serveUpstream(path: string, res: ServerResponse): Promise<boolean> {
+  const key = path;
+  const hit = proxyCache.get(key);
+  const ttl = PROXY_TTL[path] ?? 600_000;
+  if (hit && Date.now() - hit.at < ttl) {
+    res.writeHead(200, { "content-type": hit.type, "cache-control": "public, max-age=" + Math.floor(ttl / 1000) });
+    res.end(hit.body);
+    return true;
+  }
+  try {
+    const r = await fetch(UPSTREAM + path, { signal: AbortSignal.timeout(5000) });
+    if (!r.ok) { json(res, 502, { error: "upstream_" + r.status }); return true; }
+    const body = Buffer.from(await r.arrayBuffer());
+    if (body.length > 8 << 20) { json(res, 502, { error: "upstream_too_large" }); return true; }
+    const type = r.headers.get("content-type") ?? "application/octet-stream";
+    if (proxyCache.size >= PROXY_MAX_ENTRIES) proxyCache.delete(proxyCache.keys().next().value as string);
+    proxyCache.set(key, { body, type, at: Date.now() });
+    res.writeHead(200, { "content-type": type, "cache-control": "public, max-age=" + Math.floor(ttl / 1000) });
+    res.end(body);
+    return true;
+  } catch (e) {
+    json(res, 502, { error: "upstream_unavailable" });
+    return true;
+  }
 }
 
 const MIME: Record<string, string> = {

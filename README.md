@@ -68,3 +68,10 @@ delta history 1000 entries / 4 MiB, then the host is asked for a fresh snapshot.
 - tunnel: `games.futuremagic.de → http://127.0.0.1:8490` in `/etc/cloudflared/config.yml`
 - test: `GH_URL=https://games.futuremagic.de GH_KEY_FILE=~/gamehub-config/demo.key npm run smoke`
   (on this box add `NO_PROXY=games.futuremagic.de,127.0.0.1`: the OpenClaw egress proxy otherwise captures Node's WebSocket)
+
+## This deployment's frontend
+
+`src/web/` holds the built **lobby** (from `gameserver@311127c`, built with the default relative registry).
+Served at `https://games.futuremagic.de/`. Because the lobby reads the site registry same-origin, the relay
+proxies two paths from the apps host: `GET /apps.json` and `GET /shots/*` (in-memory cache, 60 s / 600 s).
+The JSON service index lives at `/v1`.
