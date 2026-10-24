@@ -12,7 +12,7 @@ import { createServer } from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import { createHash, createPublicKey, timingSafeEqual, verify as cryptoVerify, randomInt } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { WebSocketServer } from "ws";
@@ -23,6 +23,7 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.GAMEHUB_PORT ?? 8490);
 const CONFIG_PATH = process.env.GAMEHUB_CONFIG ?? "/home/administrator/gamehub-config/apps.json";
 const SDK_PATH = join(dirname(fileURLToPath(import.meta.url)), "sdk.js");
+const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), "web");
 const DEFAULT_ORIGINS = ["https://apps.futuremagic.de"];
 
 const LIMITS = {
@@ -370,11 +371,17 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (req.method !== "GET") return json(res, 405, { error: "method_not_allowed" });
   if (path === "/healthz") return json(res, 200, { ok: true });
+  const asset = resolveWebFile(path);
+  if (asset) {
+    const type = MIME[asset.ext] ?? "application/octet-stream";
+    res.writeHead(200, { "content-type": type, "cache-control": asset.ext === "html" ? "no-cache" : "public, max-age=300" });
+    return res.end(readFileSync(asset.file));
+  }
   if (path === "/sdk.js") {
     res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
     return res.end(readFileSync(SDK_PATH));
   }
-  if (path === "/") return json(res, 200, { service: "gamehub", endpoints: ["GET /v1/apps", "GET /v1/apps/{app}/rooms", "WS /v1/apps/{app}/ws", "GET /sdk.js"], access: "prefix /access for Cloudflare Access apps" });
+  if (path === "/v1") return json(res, 200, { service: "gamehub", endpoints: ["GET /", "GET /sdk.js", "GET /v1/apps", "GET /v1/apps/{app}/rooms", "WS /v1/apps/{app}/ws"], access: "prefix /access for Cloudflare Access apps" });
   if (path === "/v1/apps") {
     const cfg = loadConfig();
     return json(res, 200, { apps: Object.entries(cfg.apps).map(([id, a]) => ({ id, name: a.name ?? id, access: a.access })) });
@@ -386,6 +393,23 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { rooms: listRooms(m[1]) });
   }
   return json(res, 404, { error: "not_found" });
+}
+
+const MIME: Record<string, string> = {
+  html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8",
+  svg: "image/svg+xml", png: "image/png", ico: "image/x-icon", json: "application/json; charset=utf-8",
+  txt: "text/plain; charset=utf-8", webmanifest: "application/manifest+json",
+};
+/** Map a URL path onto a file inside web/, or undefined. Refuses traversal; "/" serves index.html. */
+function resolveWebFile(path: string): { file: string; ext: string } | undefined {
+  const rel = path === "/" ? "index.html" : path.slice(1);
+  if (!rel || rel.includes("..") || rel.startsWith("/") || rel.includes("\\")) return undefined;
+  if (rel.split("/").some((part) => part.startsWith("."))) return undefined;
+  const file = join(WEB_DIR, rel);
+  if (!file.startsWith(WEB_DIR + "/")) return undefined;
+  if (!existsSync(file) || !statSync(file).isFile()) return undefined;
+  const ext = (rel.split(".").pop() ?? "").toLowerCase();
+  return MIME[ext] ? { file, ext } : undefined;
 }
 
 const server = createServer((req, res) => {
