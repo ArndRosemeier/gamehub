@@ -52,6 +52,18 @@ switch (cmd) {
     console.log(minted);
     break;
   }
+  case "add-key": {
+    // Register a key that already ships in a game's bundle, so its build keeps working.
+    const a = needApp(id);
+    if (a.access !== "key") fail(id + " uses " + a.access + " access - it needs no key");
+    const presented = (rest[0] ?? readFileSync(0, "utf8")).trim();
+    if (!presented) fail("usage: add-key <id> [key]   (or pipe the key on stdin)");
+    const hash = createHash("sha256").update(presented).digest("hex");
+    a.keyHashes = [...new Set([...(a.keyHashes ?? []), hash])];
+    save(c);
+    console.log("registered an existing key for " + id + " (keys now " + a.keyHashes.length + ")");
+    break;
+  }
   case "revoke-keys": { const a = needApp(id); a.keyHashes = []; save(c); console.log("revoked all keys of " + id); break; }
   case "set-access": {
     const a = needApp(id);
