@@ -1,0 +1,20 @@
+# GameHub - universal in-memory game-state relay (loopback, behind the Cloudflare tunnel).
+# Same process contract as ServerStore: loopback only (HOST is a constant in src/server.ts),
+# exposure is the tunnel's job, config lives OUTSIDE the repo.
+#   cp deploy/gamehub.service ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now gamehub
+[Unit]
+Description=GameHub - universal game-state relay (loopback, behind the Cloudflare tunnel)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/administrator/projects/GameHub
+Environment=GAMEHUB_PORT=8490
+Environment=GAMEHUB_CONFIG=/home/administrator/gamehub-config/apps.json
+ExecStart=/usr/bin/node --experimental-strip-types /home/administrator/projects/GameHub/src/server.ts
+Restart=on-failure
+RestartSec=3
+MemoryMax=512M
+
+[Install]
+WantedBy=default.target

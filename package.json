@@ -1,0 +1,18 @@
+{
+  "name": "gamehub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Universal in-memory game-state relay for TypeScript games (rooms, lobby, snapshot+delta sync).",
+  "scripts": {
+    "serve": "node --experimental-strip-types src/server.ts",
+    "apps": "node --experimental-strip-types scripts/apps.ts",
+    "smoke": "node tests/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}
